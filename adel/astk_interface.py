@@ -159,7 +159,7 @@ class AdelWheat(object):
         self.convUnit = convUnit
 
     def timing(self, delay, steps, weather, start_date):
-        """ compute timing and time_control_sets for a simulation between start and stop. 
+        """ compute timing and time_control_sets for a simulation between start and stop.
 
         Return 0 when there is no rain
         """
@@ -225,7 +225,7 @@ class AdelWheat(object):
 
         self.canopy_age = age
 
-        # produce plants positionned at origin        
+        # produce plants positionned at origin
         if self.nrem > 0:
             canopy = RunAdel(age, self.pars_rem, adelpars=self.run_adel_pars)
             if new:
@@ -476,7 +476,21 @@ class AdelWheat(object):
         data = self.get_midribs(g)
         return midrib_statistics(data)
 
-    def update_geometry(self, g):
+    def update_geometry(self, g, SI_units=False, properties_to_convert={'lengths':[], 'areas':[]}):
+        """Update MTG geometry.
+
+        :Parameters:
+            - `g` (:class:`openalea.mtg.mtg.MTG`) - The MTG to update the geometry.
+            - `SI_units` (:class:`bool`) - A boolean indicating whether the MTG properties are expressed in SI units.
+            - `properties_to_convert` (:class:`dict` of :class:`pandas.DataFrame`) - A dictionnary with the list of length properties area properties to be converted.
+        :Returns:
+            MTG with updated geometry
+        :Returns Type:
+            :class:`openalea.mtg.mtg.MTG`
+        """
+
+        if SI_units:
+            self.convert_to_ADEL_units(g, properties_to_convert)
 
         # update elements
         g = update_organ_elements(g, self.leaves, self.split)
@@ -494,6 +508,35 @@ class AdelWheat(object):
                                                self.plant_azimuths[i])
         return g
 
+    def convert_to_ADEL_units(self, g, properties_to_convert):
+        """Converts the MTG to ADEL units. From m to cm for length properties and from m2 to cm2 for area properties.
+
+        :Parameters:
+            - `g` (:class:`openalea.mtg.mtg.MTG`) - The MTG to update.
+            - `properties_to_convert` (:class:`dict` of :class:`pandas.DataFrame`) - A dictionnary with the list of length properties area properties to be converted.
+        """
+        for length_property in properties_to_convert['lengths']:
+            for vid, length in g.properties()[length_property].iteritems():
+                g.properties()[length_property][vid] = length * 100 # Converts m to cm
+
+        for area_property in properties_to_convert['areas']:
+            for vid, area in g.properties()[area_property].iteritems():
+                g.properties()[area_property][vid] = area * 10000 # Converts m2 to cm2
+
+    def convert_to_SI_units(self, g, properties_to_convert):
+        """Converts the MTG to SI units from ADEL. From cm to m for length properties and from cm2 to m2 for area properties.
+
+        :Parameters:
+            - `g` (:class:`openalea.mtg.mtg.MTG`) - The MTG to update.
+            - `properties_to_convert` (:class:`dict` of :class:`pandas.DataFrame`) - A dictionnary with the list of length properties area properties to be converted.
+        """
+        for length_property in properties_to_convert['lengths']:
+            for vid, length in g.properties()[length_property].iteritems():
+                g.properties()[length_property][vid] = length / 100 # Converts cm to m
+
+        for area_property in properties_to_convert['areas']:
+            for vid, area in g.properties()[area_property].iteritems():
+                g.properties()[area_property][vid] = area / 10000 # Converts cm2 to m2
 
 def adelwheat_node(nplants=1, nsect=1, devT=None, leaves=None, geoAxe=None,
                    stand=None, run_adel_pars=None, options={}):
@@ -529,7 +572,7 @@ def initialise_stand(age=0., length=0.1, width=0.2, sowing_density=150,
                      plant_density=150, inter_row=0.12, nsect=1, seed=None,
                      sample='random'):
     """ Initialize a wheat canopy.
-    
+
     Parameters
     ----------
     age: float
@@ -541,7 +584,7 @@ def initialise_stand(age=0., length=0.1, width=0.2, sowing_density=150,
     sowing density: int
         Density of seeds sawn (in seeds.m-2)
     plant_density: int
-        Density of plants that are present (after loss due to bad emergence, 
+        Density of plants that are present (after loss due to bad emergence,
         early death...) (in plants.m-2)
     inter_row: float
         Distance between rows (in m)
@@ -549,7 +592,7 @@ def initialise_stand(age=0., length=0.1, width=0.2, sowing_density=150,
         random seed used by adel to sample plants in the data
     sample : string
         type of sampling. 'random' or 'sequence'
-    
+
     Returns
     -------
     g: MTG
